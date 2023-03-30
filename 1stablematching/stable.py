@@ -1,9 +1,13 @@
 #! /bin/env python3
 import sys
+import time
+from queue import SimpleQueue
 
 
 def main():
+    tic1 = time.perf_counter()
     N, lines = read_input()
+
     comp = [None] * N
     stud = [None] * N
 
@@ -16,13 +20,21 @@ def main():
                 h = line[j + 1]
                 comp[i][h] = j
         else:
-            stud[i] = line[1:]
+            stud[i] = SimpleQueue()
+            for j in line[1:]:
+                stud[i].put(j)
+    toc1 = time.perf_counter()
 
+    tic2 = time.perf_counter()
     matching = galeshapley(comp, stud, N)
+    toc2 = time.perf_counter()
 
     for s in matching:
-        # Convert to correct format again
+        # Convert to correct format again and print
         print(s + 1)
+        pass
+    print(f"Read time: {toc1 - tic1}", file=sys.stderr)
+    print(f"Match time: {toc2 - tic2}", file=sys.stderr)
 
 
 def read_input():
@@ -42,19 +54,24 @@ def read_input():
 
 def galeshapley(comp, stud, N):
     pairs = [-1] * N
-    free_stud = [i for i in range(N)]
-    while len(free_stud) > 0:
-        s = free_stud.pop(0)
-        c = stud[s].pop(0)
+    free_stud = SimpleQueue()
+    for i in range(N):
+        free_stud.put(i)
+    while not free_stud.empty():
+        s = free_stud.get()
+        c = stud[s].get()
         if pairs[c] == -1:
+            # The company does not have a student assigned currently
             pairs[c] = s
         else:
+            # The company has a student assigned, check if it is preferred
             old_s = pairs[c]
+            # A more preferred student will have a smaller index in the original array.
             if comp[c][old_s] > comp[c][s]:
                 pairs[c] = s
-                free_stud.append(old_s)
+                free_stud.put(old_s)
             else:
-                free_stud.append(s)
+                free_stud.put(s)
     return pairs
 
 
