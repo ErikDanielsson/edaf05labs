@@ -4,7 +4,7 @@ import sys
 import time
 
 
-def prim(graph, N, graphic=False):
+def prim(graph, N):
     hepp = [(w, u) for w, u in graph[0]]
     heapq.heapify(hepp)
     T = {0}
@@ -39,7 +39,7 @@ def main():
     toc1 = time.perf_counter()
 
     tic2 = time.perf_counter()
-    s = prim(graph, N, True)
+    s = prim(graph, N)
     toc2 = time.perf_counter()
 
     print(s)
