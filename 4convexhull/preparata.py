@@ -1,5 +1,6 @@
 #! /bin/env python
 import sys
+import time
 
 import numpy as np
 
@@ -28,6 +29,8 @@ def read_data():
 
 
 def slope(p, q):
+    if p[0] == q[0]:
+        return np.sign(p[1] - q[1]) * float("inf")
     return (p[1] - q[1]) / (p[0] - q[0])
 
 
@@ -103,8 +106,8 @@ def dc(p):
     # Four cases
     if L_a < L_b:
         if R_a < R_b:
-            ia_R, ia_L, ja_L, ja_R = case_1(a, n_a, b, n_b, alfa, beta, i_l, j_l)
             # Case 1
+            ia_R, ia_L, ja_L, ja_R = case_1(a, n_a, b, n_b, alfa, beta, i_l, j_l)
         else:
             # Case 2
             ia_R, ia_L, ja_L, ja_R = case_2(a, n_a, b, n_b, alfa, beta, i_l, j_l)
@@ -147,8 +150,8 @@ def convex_hull_base_case(p):
             leftmost = x
             l_i = i
 
-    p_r = p[r_i, :]
-    p_l = p[l_i, :]
+    p_r = np.copy(p[r_i, :])
+    p_l = np.copy(p[l_i, :])
 
     if p.shape[0] == 2:
         return np.array([p_r, p_l]), 1
@@ -156,20 +159,29 @@ def convex_hull_base_case(p):
     indices = set([0, 1, 2])
     indices.remove(r_i)
     indices.remove(l_i)
-    p_third = indices.pop()
+    i_third = indices.pop()
+    p_third = np.copy(p[i_third, :])
     if left_turn(p_r, p_third, p_l):
-        return np.array([p_r, p_l, p_third]), 1
+        print("LEFT", file=sys.stderr)
+        p[0, :] = p_r
+        p[1, :] = p_l
+        p[2, :] = p_third
+        return p, 1
     else:
-        return np.array([p_r, p_third, p_l]), 2
+        print("RIGHT", file=sys.stderr)
+        p[0, :] = p_r
+        p[1, :] = p_third
+        p[2, :] = p_l
+        return p, 2
 
 
 def preparata_hong(points):
-    points = np.sort(points)
-    p, i = dc(points)
-    n = len(p)
-    print(n)
-    print(points)
-    return points[:n, :], i
+    ind = np.lexsort((points[:, 0], points[:, 1]))
+    temp = [(points[i, 0], points[i, 1]) for i in ind]
+    for i, pair in enumerate(temp):
+        points[i, :] = pair
+    hull, i = dc(points)
+    return hull
 
 
 # Case 1
@@ -296,10 +308,28 @@ def case_4(a, n_a, b, n_b, alfa, beta, i_l, j_l):
     return i_r_new, i_l_new, j_r_new, j_l_new
 
 
+def print_hull(hull):
+    print(hull.shape[0])
+    if is_integer:
+        hull = hull.astype("int")
+        for point in hull[:, :]:
+            print(f"{point[0]:d} {point[1]:d}")
+    else:
+        for point in hull[:, :]:
+            print(f"{point[0]:.3f} {point[1]:.3f}")
+
+
 def main():
+    print("PREPARATA-HONG", file=sys.stderr)
+    tic = time.perf_counter()
     N, points, p0_index = read_data()
+    toc = time.perf_counter()
+    print(f"    Reading time: {toc - tic}", file=sys.stderr)
+    tic = time.perf_counter()
     hull = preparata_hong(points)
-    print(hull)
+    toc = time.perf_counter()
+    print(f"    Preparata-Hong time: {toc - tic}", file=sys.stderr)
+    print_hull(hull)
 
 
 main()

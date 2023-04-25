@@ -91,6 +91,7 @@ def reorder_hull(graham_hull):
 
 
 def main(plot=False):
+    print("GRAHAM SCAN", file=sys.stderr)
     tic = time.perf_counter()
     N, points, p0_index = read_data()
     toc = time.perf_counter()
