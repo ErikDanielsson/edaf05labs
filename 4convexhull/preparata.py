@@ -2,6 +2,7 @@
 import sys
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 is_integer = True
@@ -35,6 +36,7 @@ def slope(p, q):
 
 
 def compute_slope(p):
+    # print(f"Compute slope {p}", file=sys.stderr)
     n = p.shape[0]
     alfa = np.zeros(n)
     for i in range(n):
@@ -54,32 +56,41 @@ def add(k, fr, to, q, p, n):
     j = fr
     while True:
         q[k] = p[j]
+        k += 1
         if j == to:
             return k
         j = (j + 1) % n
 
 
 def line_segment(p_r, p_s, p_t):
-    v0 = p_t - p_s
-    vc = p_r - p_s
-    v0_mag = np.linalg.norm(v0)
-    vc_mag = np.linalg.norm(vc)
-    return v0 / v0_mag == vc / vc_mag and vc_mag < v0_mag
+    print(f"LINE SEGMENT: {p_r}, {p_s}, {p_t}")
+    u = p_r - p_s
+    v = p_t - p_s
+    c = cross_product_sign(u, v)
+    uv = np.dot(u, v)
+    vv = np.dot(v, v)
+    return c == 0 and (uv < 0 or uv > vv)
 
 
 def include_points(q, p, j, n):
+    print("INCLUDE points")
+    print(q)
+    print(p)
+    print(n)
     i = 0
     for k in range(n):
         u = (n + k + j - 1) % n
-        v = (n + k + j - 1) % n
-        w = (n + k + j - 1) % n
+        v = (n + k + j) % n
+        w = (n + k + j + 1) % n
         if not line_segment(q[v, :], q[u, :], q[w, :]):
+            print("HAJ")
             p[i, :] = q[v, :]
             i += 1
     return i
 
 
 def dc(p):
+    print(f"DC {p}")
     n = p.shape[0]
     if n <= 3:
         return convex_hull_base_case(p)
@@ -93,6 +104,8 @@ def dc(p):
     b = p[n_a:n, :]
     n_a, i_l = dc(a)
     n_b, j_l = dc(b)
+    print(f"a: {a}")
+    print(f"b: {b}")
     alfa = compute_slope(a)
     beta = compute_slope(b)
     n = 0
@@ -118,8 +131,11 @@ def dc(p):
         else:
             # Case 4
             ia_R, ia_L, ja_L, ja_R = case_4(a, n_a, b, n_b, alfa, beta, i_l, j_l)
+    print("CASE DONE")
     n = add(0, ia_R, ia_L, q, a, n_a)
+    print(n)
     n = add(n, ja_R, ja_L, q, b, n_b)
+    print(n)
 
     j = 0
     for k in range(n):
@@ -136,15 +152,16 @@ def dc(p):
 
 
 def convex_hull_base_case(p):
+    print(f"BASECASE {p}")
     # Inga specialfall än mannen
     # De e chill.
-    rightmost = -float("inf")
+    rightmost = np.array([-float("inf"), float("inf")])
     leftmost = float("inf")
     r_i = -1
     l_i = -1
-    for i, (x, _) in enumerate(p):
-        if x > rightmost:
-            rightmost = x
+    for i, (x, y) in enumerate(p):
+        if x > rightmost[0] or x == rightmost[0] and y > rightmost[1]:
+            rightmost[:] = (x, y)
             r_i = i
         if x < leftmost:
             leftmost = x
@@ -154,7 +171,11 @@ def convex_hull_base_case(p):
     p_l = np.copy(p[l_i, :])
 
     if p.shape[0] == 2:
-        return np.array([p_r, p_l]), 1
+        print(p_r, r_i)
+        print(p_l, l_i)
+        p[0, :] = p_r
+        p[1, :] = p_l
+        return 2, 1
 
     indices = set([0, 1, 2])
     indices.remove(r_i)
@@ -166,13 +187,13 @@ def convex_hull_base_case(p):
         p[0, :] = p_r
         p[1, :] = p_l
         p[2, :] = p_third
-        return p, 1
+        return 3, 1
     else:
         print("RIGHT", file=sys.stderr)
         p[0, :] = p_r
         p[1, :] = p_third
         p[2, :] = p_l
-        return p, 2
+        return 3, 2
 
 
 def preparata_hong(points):
@@ -180,12 +201,14 @@ def preparata_hong(points):
     temp = [(points[i, 0], points[i, 1]) for i in ind]
     for i, pair in enumerate(temp):
         points[i, :] = pair
-    hull, i = dc(points)
+    n, i = dc(points)
+    hull = points[:n, :]
     return hull
 
 
 # Case 1
 def case_1(a, n_a, b, n_b, alfa, beta, i_l, j_l):
+    print("CASE 1", file=sys.stderr)
     i = 0
     j = 0
     while True:
@@ -215,6 +238,7 @@ def case_1(a, n_a, b, n_b, alfa, beta, i_l, j_l):
 
 # Case 2
 def case_2(a, n_a, b, n_b, alfa, beta, i_l, j_l):
+    print("CASE 2", file=sys.stderr)
     i = 0
     j = 0
     while True:
@@ -246,6 +270,7 @@ def case_2(a, n_a, b, n_b, alfa, beta, i_l, j_l):
 
 # Case 3
 def case_3(a, n_a, b, n_b, alfa, beta, i_L, j_L):
+    print("CASE 3", file=sys.stderr)
     i = 0
     j = 0
     while True:
@@ -277,6 +302,7 @@ def case_3(a, n_a, b, n_b, alfa, beta, i_L, j_L):
 
 # Case 4
 def case_4(a, n_a, b, n_b, alfa, beta, i_l, j_l):
+    print("CASE 4", file=sys.stderr)
     i = 0
     j = 0
     while True:
@@ -319,7 +345,21 @@ def print_hull(hull):
             print(f"{point[0]:.3f} {point[1]:.3f}")
 
 
-def main():
+def plot_points(points):
+    N = points.shape[0]
+    fig, ax = plt.subplots()
+    ax.scatter(points[:, 0], points[:, 1], s=1)
+    if len(points) < 20:
+        for i in range(N):
+            ax.annotate(f"p{i}", points[i, :])
+    return fig, ax
+
+
+def plot_hull(hull):
+    return plt.plot(hull[:, 0], hull[:, 1], marker="o", color="red")
+
+
+def main(plot=True):
     print("PREPARATA-HONG", file=sys.stderr)
     tic = time.perf_counter()
     N, points, p0_index = read_data()
@@ -330,6 +370,10 @@ def main():
     toc = time.perf_counter()
     print(f"    Preparata-Hong time: {toc - tic}", file=sys.stderr)
     print_hull(hull)
+    if plot:
+        plot_points(np.array(points))
+        plot_hull(hull)
+        plt.show()
 
 
 main()
