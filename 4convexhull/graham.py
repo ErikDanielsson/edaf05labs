@@ -46,7 +46,7 @@ def left_turn(p1, p2, p3):
     return cross_product_sign(p3 - p1, p2 - p1) > 0
 
 
-def graham(N, points, p0_index, stack=False):
+def graham(N, points, p0_index):
     p0 = np.array(points.pop(p0_index))
     norm_ps = np.array(points) - p0
     norm_ps = np.array(sorted(norm_ps, key=functools.cmp_to_key(angle_comparator)))
@@ -58,10 +58,6 @@ def graham(N, points, p0_index, stack=False):
     hull[1, :] = norm_ps[start_i, :]
     hull[2, :] = norm_ps[start_i + 1, :]
     hindex = 2
-    if stack:
-        print("Stack")
-        print(hull[: hindex + 1, :])
-        print()
     for p in norm_ps[start_i + 2 :, :]:
         while not left_turn(hull[hindex - 1], hull[hindex], p):
             hindex -= 1

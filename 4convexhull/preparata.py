@@ -62,14 +62,14 @@ def add(k, fr, to, q, p, n):
         j = (j + 1) % n
 
 
-def line_segment(p_r, p_s, p_t):
-    print(f"LINE SEGMENT: {p_r}, {p_s}, {p_t}")
-    u = p_r - p_s
-    v = p_t - p_s
+def line_segment(p, q, r):
+    print(f"LINE SEGMENT: {p}, {q}, {r}")
+    u = p - q
+    v = r - q
     c = cross_product_sign(u, v)
     uv = np.dot(u, v)
     vv = np.dot(v, v)
-    return c == 0 and (uv < 0 or uv > vv)
+    return c == 0 and uv > 0 and uv < vv
 
 
 def include_points(q, p, j, n):
@@ -86,6 +86,17 @@ def include_points(q, p, j, n):
             print("HAJ")
             p[i, :] = q[v, :]
             i += 1
+    return i
+
+
+def leftmost(p):
+    n = p.shape[0]
+    i = 0
+    for k in range(n):
+        if p[k, 0] < p[i, 0]:
+            i = k
+    if i == 0:
+        i = 1
     return i
 
 
