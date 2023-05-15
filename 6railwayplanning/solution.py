@@ -1,4 +1,5 @@
 #! /bin/env python
+import copy
 import cProfile
 import sys
 import time
@@ -70,23 +71,15 @@ def find_path(graph, s, t):
 
 def ford_fulkerson(graph, s, t, C):
     total_flow = 0
+    flow_graph = {}
     G_f = {}
     # Construct G_f and flows
     smallest_delta = float("inf")
     # print("The graph now looks like: "+str(graph),file=sys.stderr)
-    for u in graph.keys():
-        for v in graph[u].keys():
-            # We add the possible flow increase (the capacity) to both uv and vu in G_f.
-            if u not in G_f.keys():
-                G_f[u] = {v: graph[u][v]}
-            else:
-                G_f[u][v] = graph[u][v]
-            if v not in G_f.keys():
-                G_f[v] = {u: graph[u][v]}
-            else:
-                G_f[v][u] = graph[u][v]
+    G_f = copy.deepcopy(graph)
 
-    while True:
+    # We don't need to compute the maximum flow, only that it is C or larger
+    while total_flow < C:
         path = find_path(G_f, s, t)
         # print("Found path "+str(path),file=sys.stderr)
         if path == None:
@@ -102,44 +95,70 @@ def ford_fulkerson(graph, s, t, C):
         for n1, n2 in zip(path[:-1], path[1:]):
             G_f[n1][n2] -= smallest_delta
             G_f[n2][n1] -= smallest_delta
+
             if G_f[n1][n2] == 0 or G_f[n2][n1] == 0:
                 G_f[n1].pop(n2)
                 G_f[n2].pop(n1)
+
+            # Create the flow
+            if n1 not in flow_graph:
+                flow_graph[n1] = set()
+            flow_graph[n1].add(n2)
+            if n2 not in flow_graph:
+                flow_graph[n2] = set()
+            flow_graph[n2].add(n1)
         total_flow += smallest_delta
-    return total_flow
-
-
-def residual_graph(graph):
-    return None
+    return total_flow, flow_graph
 
 
 def main():
     tic = time.perf_counter()
     graph, s, t, edges, remove, c = read_input()
+    org_graph = copy.deepcopy(graph)
     toc = time.perf_counter()
     print(f"Reading time {toc - tic}", file=sys.stderr)
     # print("Graph of capacities",str(graph),file=sys.stderr)
     # print("Edges to remove",str(remove),file=sys.stderr)
     # We want to return the amount of the edge that we can remove, and then
     # edges 0 1 2
-    # SUper inefficient solution comes here.
+
+    #
     ff_time = 0
     ff_count = 0
-    amount_of_edges = 0
-    for index in remove:
-        u, v = edges[index]
+
+    # We only need to check the case where we've removed
+    # the first edge in the list.
+    print(f"Number of candidates {len(remove)}", file=sys.stderr)
+    amount_of_edges = 1
+    u, v = edges[remove[0]]
+    graph[u].pop(v)
+    graph[v].pop(u)
+    new_flow, flow_graph = ford_fulkerson(graph, s, t, c)
+
+    for i in range(1, len(remove)):
+        if i % 10 == 1:
+            print(f"Iteration {i}", file=sys.stderr)
+        # Now we successively remove the edges
+        u, v = edges[remove[i]]
         graph[u].pop(v)
         graph[v].pop(u)
-        # print("Removed edge (" + str(u) + "," + str(v) + ")", file=sys.stderr)
-        tic = time.perf_counter()
-        new_flow = ford_fulkerson(graph, s, t, c)
-        toc = time.perf_counter()
-        ff_time += toc - tic
-        ff_count += 1
-        if new_flow < c:
-            break
+        # We only need to recompute the flow if the removed edge
+        # was part of the previous flow
+        if v in flow_graph and u in flow_graph[v]:
+            tic = time.perf_counter()
+            new_flow, flow_graph = ford_fulkerson(graph, s, t, c)
+            toc = time.perf_counter()
+            print(f"FF time {toc - tic}", file=sys.stderr)
+            ff_time += toc - tic
+            ff_count += 1
+            if new_flow < c:
+                break
         amount_of_edges += 1
-        max_flow = new_flow
+    # Now compute the max flow of the
+    graph[u][v] = org_graph[u][v]
+    graph[v][u] = org_graph[v][u]
+    max_flow, _ = ford_fulkerson(graph, s, t, float("inf"))
+    print(f"Tot FF {ff_count}", file=sys.stderr)
     print(f"Average FF time {ff_time / ff_count}", file=sys.stderr)
     print(str(amount_of_edges) + " " + str(max_flow))
 
