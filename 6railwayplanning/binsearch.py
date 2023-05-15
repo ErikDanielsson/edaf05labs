@@ -107,39 +107,52 @@ def ford_fulkerson(graph, s, t, C):
     return total_flow, flow_graph
 
 
+def find_upper_bound(i, upper_graph, remove, edges, s, t, c):
+    u, v = edges[remove[i]]
+    i += 1
+    c1 = upper_graph[u].pop(v)
+    c2 = upper_graph[v].pop(u)
+    new_flow, flow_graph = ford_fulkerson(upper_graph, s, t, c)
+    u, v = edges[remove[i]]
+    while not (v in flow_graph and u in flow_graph) and i < len(remove[i]):
+        c1 = upper_graph[u].pop(v)
+        c2 = upper_graph[v].pop(u)
+        u, v = edges[remove[i]]
+        i += 1
+    return new_flow, i, upper_graph, c1, c2
+
+
+def find_lower_bound(i, lower_graph, org_graph, remove, edges, s, t, c):
+    u, v = edges[remove[i]]
+    i -= 1
+    lower_graph[u][v] = org_graph[u][v]
+    lower_graph[v][u] = org_graph[v][u]
+    new_flow, _ = ford_fulkerson(lower_graph, s, t, c)
+    return new_flow, i, lower_graph
+
+
 def compute_edges_and_flow(graph, edges, remove, s, t, c):
     ff_time = 0
     ff_count = 0
-    print(f"Number of candidates {len(remove)}", file=sys.stderr)
 
-    # We first compute the maximum flow to initialise the flow graph
-    amount_of_edges = 1
-    u, v = edges[remove[0]]
-    c1 = graph[u].pop(v)
-    c2 = graph[v].pop(u)
-    tic = time.perf_counter()
-    new_flow, flow_graph = ford_fulkerson(graph, s, t, c)
-    toc = time.perf_counter()
-    print(f"FF time {toc - tic}", file=sys.stderr)
+    # Lets do a binary search!
+    upper_graph = copy.deepcopy(graph)
+    new_flow, upper_i, upper_graph, c1, c2 = find_upper_bound(
+        0, upper_graph, remove, edges, s, t, c
+    )
 
-    for i in range(1, len(remove)):
-        # Now we successively remove the edges
-        u, v = edges[remove[i]]
-        c1 = graph[u].pop(v)
-        c2 = graph[v].pop(u)
+    mid_graph = copy.deepcopy(graph)
+    mid_i = (upper_i + 1) // 2
+    for i in remove[:mid_i]:
+        u, v = edges[i]
+        mid_graph[u].pop(v)
+        mid_graph[v].pop(u)
 
-        # We only need to recompute the flow if the removed edge
-        # was part of the previous flow
-        if v in flow_graph and u in flow_graph[v]:
-            tic = time.perf_counter()
-            new_flow, flow_graph = ford_fulkerson(graph, s, t, c)
-            toc = time.perf_counter()
-            print(f"FF time {toc - tic}", file=sys.stderr)
-            ff_time += toc - tic
-            ff_count += 1
-            if new_flow < c:
-                break
-        amount_of_edges += 1
+    lower_graph = copy.deepcopy(mid_graph)
+    for i in remove[mid_i]:
+        u, v = edges[i]
+        mid_graph[u].pop(v)
+        mid_graph[v].pop(u)
 
     # Finally, we add back the last removed edge and compute the real max flow
     graph[u][v] = c1
