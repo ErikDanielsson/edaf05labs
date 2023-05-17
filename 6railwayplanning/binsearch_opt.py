@@ -60,7 +60,7 @@ def find_path(graph, s, t):
             if curr[0] == t:
                 path = linked_path_to_listed_path(curr)
                 return path
-            elif curr[0] in graph:
+            elif curr[0] in graph.keys():
                 for c in graph[curr[0]]:
                     child_queue.append((c, curr))
             visited.add(curr[0])
@@ -79,6 +79,7 @@ def ford_fulkerson(graph, s, t, C):
 
     # Construct G_f and flows
     G_f = copy.deepcopy(graph)
+    flow_graph = {}
 
     # We don't need to compute the maximum flow, only that it is C or larger
     while total_flow < C:
@@ -98,9 +99,21 @@ def ford_fulkerson(graph, s, t, C):
                 G_f[n1].pop(n2)
                 G_f[n2].pop(n1)
 
+            # Create the flow graph
+            if n1 not in flow_graph:
+                flow_graph[n1] = set()
+            flow_graph[n1].add(n2)
+            if n2 not in flow_graph:
+                flow_graph[n2] = set()
+            flow_graph[n2].add(n1)
+
         total_flow += smallest_delta
 
-    return total_flow
+    return total_flow, flow_graph
+
+
+def edges_in_graph(graph):
+    return sum(len(childs) for childs in graph.values()) // 2
 
 
 def compute_edges_and_flow(graph, edges, remove, s, t, C):
@@ -113,7 +126,7 @@ def compute_edges_and_flow(graph, edges, remove, s, t, C):
         lower_graph[u].pop(v)
         lower_graph[v].pop(u)
 
-    lower_flow = ford_fulkerson(lower_graph, s, t, C)
+    lower_flow, _ = ford_fulkerson(lower_graph, s, t, C)
     if lower_flow >= C:
         # If we can remove all edges, just compute the max flow and return
         max_flow, _ = ford_fulkerson(graph, s, t, float("inf"))
@@ -127,13 +140,12 @@ def compute_edges_and_flow(graph, edges, remove, s, t, C):
         it += 1
         mid_i = ceil((lower_i + upper_i) / 2)
         print_error(f"Iteration {it}: {upper_i} {mid_i} {lower_i}")
-
         # Check the termination condition
         if mid_i == lower_i:
             # This means that the previous upper flow was the no of edges
             # we were searching for. Compute the maxflow for the upper graph
             # which will be the solution to the problem
-            max_flow = ford_fulkerson(upper_graph, s, t, float("inf"))
+            max_flow, flow_graph = ford_fulkerson(upper_graph, s, t, float("inf"))
             return upper_i, max_flow
 
         # Construct the mid graph
@@ -144,13 +156,22 @@ def compute_edges_and_flow(graph, edges, remove, s, t, C):
             mid_graph[v].pop(u)
 
         # Compute the mid flow
-        mid_flow = ford_fulkerson(mid_graph, s, t, C)
+        mid_flow, flow_graph = ford_fulkerson(mid_graph, s, t, C)
         if mid_flow < C:
             lower_graph = mid_graph
             lower_i = mid_i
         else:
             upper_graph = mid_graph
             upper_i = mid_i
+
+            # Improve the upper bound by searching for edges that are not in the max-flow graph
+            u, v = edges[remove[upper_i]]
+            while upper_i != lower_i and not (v in flow_graph and u in flow_graph[v]):
+                print_error(f"Low hanging fruit {upper_i}")
+                upper_graph[u].pop(v)
+                upper_graph[v].pop(u)
+                upper_i += 1
+                u, v = edges[remove[upper_i]]
 
 
 def main():
