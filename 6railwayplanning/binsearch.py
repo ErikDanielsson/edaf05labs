@@ -33,14 +33,11 @@ def read_input():
     return graph, 0, N - 1, edges, remove, C
 
 
-def linked_path_to_listed_path(t):
-    path = []
-    while True:
-        path.append(t[0])
+def linked_path_to_listed_path(t, path_length):
+    path = np.zeros(path_length, "int64")
+    for i in range(path_length):
+        path[-i] = t[0]
         t = t[1]
-        if t == None:
-            break
-    path.reverse()
     return path
 
 
@@ -58,7 +55,7 @@ def find_path(graph, s, t):
         curr = par_queue.pop()
         if curr[0] not in visited:
             if curr[0] == t:
-                path = linked_path_to_listed_path(curr)
+                path = linked_path_to_listed_path(curr, depth + 1)
                 return path
             elif curr[0] in graph:
                 for c in graph[curr[0]]:
