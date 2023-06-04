@@ -36,7 +36,7 @@ def read_input():
 def linked_path_to_listed_path(t, path_length):
     path = np.zeros(path_length, "int64")
     for i in range(path_length):
-        path[-i] = t[0]
+        path[-(i + 1)] = t[0]
         t = t[1]
     return path
 
@@ -80,7 +80,7 @@ def ford_fulkerson(graph, s, t, C):
     # We don't need to compute the maximum flow, only that it is C or larger
     while total_flow < C:
         path = find_path(G_f, s, t)
-        if path == None:
+        if path is None:
             break
 
         # Find the smallest room for improvement in the path, and increase the flow through the path with this value.
